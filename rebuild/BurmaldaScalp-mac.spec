@@ -1,12 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 """
-PyInstaller-спека для пересборки ZoVscalpick в .exe из восстановленного байткода.
+PyInstaller-спека для сборки BurmaldaScalp под macOS.
 
-Собрать:  pyinstaller ZoVscalpick.spec --noconfirm
-Результат: dist/ZoVscalpick/ZoVscalpick.exe (+ папка _internal и ассеты рядом).
+ВАЖНО: PyInstaller не кросс-компилирует — этот файл собирается ТОЛЬКО на macOS
+(локально на маке или на macos-раннере GitHub Actions).
 
-Логика приложения — в app/zovscalpick_main.pyc (полный оригинальный функционал);
-launcher.py лишь выполняет его как __main__.
+Отличия от BurmaldaScalp.spec (Windows):
+  * убраны Windows-only hiddenimports (winsound, win32api/win32event/win32evtlog);
+  * нет .ico-иконки (у macOS свой формат .icns — добавим позже);
+  * результат оборачивается в .app-бандл (BUNDLE).
+
+Собрать:  pyinstaller BurmaldaScalp-mac.spec --noconfirm
+Результат: dist/BurmaldaScalp.app
 """
 
 import os
@@ -16,23 +21,20 @@ HERE = os.path.abspath(os.path.dirname(SPEC))
 APP = os.path.join(HERE, "app")
 ASSETS = os.path.join(HERE, "assets")
 
-# --- Собственные модули приложения и ассеты (кладём в корень бандла) --------
 datas = [
-    (os.path.join(APP, "zovscalpick_main.pyc"), "."),
+    (os.path.join(APP, "burmaldascalp_main.pyc"), "."),
     (os.path.join(APP, "app_i18n.pyc"), "."),
     (os.path.join(APP, "mexc_proto"), "mexc_proto"),
     (os.path.join(APP, "stock_proto"), "stock_proto"),
-    # Ассеты — и в бандл, и (после сборки) рядом с exe (см. postbuild-копирование).
     (os.path.join(ASSETS, "svg"), "svg"),
     (os.path.join(ASSETS, "sound"), "sound"),
     (os.path.join(ASSETS, "locales"), "locales"),
 ]
 binaries = []
-# Stdlib-подмодули, которые импортирует приложение (скрыты внутри байткода,
-# поэтому анализатор их не находит). Список восстановлен из анализа импортов.
+
+# Только кроссплатформенные stdlib-подмодули (без winsound / pywin32).
 hiddenimports = [
-    "winsound", "zoneinfo",
-    "win32api", "win32event", "win32evtlog",
+    "zoneinfo",
     "google.protobuf",
     "logging.handlers",
     "concurrent.futures",
@@ -42,11 +44,8 @@ hiddenimports = [
     "platform", "traceback", "gc", "math", "random", "datetime",
     "mexc_proto", "mexc_proto.simple_protobuf_decoder", "stock_proto",
 ]
-# multiprocessing тянет платформенные подмодули — берём целиком.
 hiddenimports += collect_submodules("multiprocessing")
 
-# --- Полная сборка сторонних пакетов (данные, бинарники, подмодули) ---------
-# Импорты внутри .pyc не видны анализатору, поэтому подтягиваем пакеты явно.
 for pkg in [
     "PyQt6", "aiohttp", "websockets", "websocket", "orjson", "psutil",
     "requests", "google.protobuf", "tzdata", "brotli", "certifi",
@@ -58,10 +57,8 @@ for pkg in [
         datas += d
         binaries += b
         hiddenimports += h
-    except Exception as exc:  # пакет может отсутствовать — пропускаем
+    except Exception as exc:
         print(f"[spec] collect_all({pkg!r}) пропущен: {exc}")
-
-block_cipher = None
 
 a = Analysis(
     ["launcher.py"],
@@ -82,9 +79,8 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="ZoVscalpick",
-    console=False,           # GUI-приложение, без консольного окна
-    icon=os.path.join(ASSETS, "svg", "icon.ico"),
+    name="BurmaldaScalp",
+    console=False,               # оконное приложение
     disable_windowed_traceback=False,
 )
 
@@ -92,5 +88,12 @@ coll = COLLECT(
     exe,
     a.binaries,
     a.datas,
-    name="ZoVscalpick",
+    name="BurmaldaScalp",
+)
+
+app = BUNDLE(
+    coll,
+    name="BurmaldaScalp.app",
+    icon=None,                   # .icns добавим позже
+    bundle_identifier="com.burmaldascalp.app",
 )

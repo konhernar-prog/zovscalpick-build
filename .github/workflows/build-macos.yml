@@ -1,6 +1,6 @@
 name: build-macos
 
-# Собирает ZoVscalpick.app на маках GitHub (PyInstaller не кросс-компилирует).
+# Собирает BurmaldaScalp.app на маках GitHub (PyInstaller не кросс-компилирует).
 # Матрица: Apple Silicon (arm64) и Intel (x86_64) — по одному .app на архитектуру.
 #   * arm64  (macos-14): для маков M1/M2/M3… (собирается быстро).
 #   * x86_64 (macos-13): работает на Intel-маках И на Apple Silicon через Rosetta 2
@@ -45,17 +45,17 @@ jobs:
       - name: Build .app with PyInstaller
         working-directory: rebuild
         run: |
-          pyinstaller ZoVscalpick-mac.spec --noconfirm --clean
+          pyinstaller BurmaldaScalp-mac.spec --noconfirm --clean
 
       - name: Zip the .app (ditto keeps bundle perms/symlinks)
         working-directory: rebuild/dist
         run: |
-          ditto -c -k --sequesterRsrc --keepParent "ZoVscalpick.app" "ZoVscalpick-macOS-${{ matrix.arch }}.zip"
+          ditto -c -k --sequesterRsrc --keepParent "BurmaldaScalp.app" "BurmaldaScalp-macOS-${{ matrix.arch }}.zip"
           ls -la
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ZoVscalpick-macOS-${{ matrix.arch }}
-          path: rebuild/dist/ZoVscalpick-macOS-${{ matrix.arch }}.zip
+          name: BurmaldaScalp-macOS-${{ matrix.arch }}
+          path: rebuild/dist/BurmaldaScalp-macOS-${{ matrix.arch }}.zip
           if-no-files-found: error
