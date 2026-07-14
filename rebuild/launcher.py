@@ -28,6 +28,22 @@ def _resource_root() -> str:
 
 
 def run() -> None:
+    # На macOS/Linux у «замороженного» приложения OpenSSL не находит системные
+    # корневые сертификаты, поэтому WSS-подключения к биржам падают с ошибкой
+    # сертификата и алерты не приходят. Указываем OpenSSL на встроенный certifi.
+    # На Windows не трогаем ничего (там используется системное хранилище) —
+    # поведение Windows-сборки остаётся прежним.
+    if sys.platform != "win32":
+        try:
+            import certifi
+
+            _ca = certifi.where()
+            os.environ.setdefault("SSL_CERT_FILE", _ca)
+            os.environ.setdefault("SSL_CERT_DIR", os.path.dirname(_ca))
+            os.environ.setdefault("REQUESTS_CA_BUNDLE", _ca)
+        except Exception:
+            pass
+
     root = _resource_root()
     if root not in sys.path:
         sys.path.insert(0, root)
